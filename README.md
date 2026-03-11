@@ -10,6 +10,13 @@ Brief description of the project and its context (3rd year optics lab extension)
 Table of simulated vs theoretical values
 Include your plots as images
 
+Scenario               QBER (%) Sifted Key Rate (%)  Theory QBER   Theory SKR   QBER Dev    SKR Dev
+-----------------------------------------------------------------------------------------------
+B92 without Eve            0.00           24.99         0.00        25.00       0.00      -0.01
+B92 with Eve              33.30           37.47        33.30        37.50       0.00      -0.03
+BB84 without Eve           0.00           50.00         0.00        50.00       0.00      -0.00
+BB84 with Eve             25.02           49.95        25.00        50.00       0.02      -0.05
+
 <img width="2084" height="740" alt="cumulative_mean_bb84_without_eve" src="https://github.com/user-attachments/assets/e7d5942a-d25c-44cf-b6df-78c30ec90a82" />
 <img width="2084" height="740" alt="cumulative_mean_bb84_with_eve" src="https://github.com/user-attachments/assets/324413e4-a328-477f-8674-0219af305476" />
 <img width="2084" height="740" alt="cumulative_mean_b92_without_eve" src="https://github.com/user-attachments/assets/59b62561-3b78-41c5-9b48-d3ee401488f5" />
