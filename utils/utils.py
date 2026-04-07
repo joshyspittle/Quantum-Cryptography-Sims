@@ -118,3 +118,25 @@ def calculate_sifted_key_rate(bob_bits, bit_size):
     sifted_key_rate = len(bob_bits) / bit_size * 100
 
     return sifted_key_rate
+
+def apply_noise(state, p_error):
+    """
+    Applies bit flip noise to a state with probability p_error.
+    Works for both integer bits (0/1) and string bases (z/x) 
+    """
+
+    if random.random() < p_error:
+        if state == 0:
+            return 1
+        elif state == 1:
+            return 0
+        elif state == 'z':
+            return 'x'
+        elif state == 'x':
+            return 'z'
+        elif state == '-':
+            return '+'
+        elif state == '+':
+            return '-'
+    
+    return state

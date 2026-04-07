@@ -23,7 +23,7 @@ def save_plot(filename):
     plt.savefig(os.path.join(RESULTS_DIR, filename), dpi=150, bbox_inches='tight')
     plt.show()
 
-def plot_bar_comparison(results, theory):
+def plot_bar_comparison(results, theory, mode="noiseless"):
     """
     Plots a bar comparison of simulated and theoretical values for QBER and SKR.
 
@@ -39,6 +39,15 @@ def plot_bar_comparison(results, theory):
     None
     """
 
+    if mode == "noiseless":
+        QBER_title = "QBER Comparison (Noiseless)"
+        SKR_title = "SKR Comparison (Noiseless)"
+        image_name = "bar_comparison_noiseless"
+    else:
+        QBER_title = "QBER Comparison (Noisy)"
+        SKR_title = "SKR Comparison (Noisy)"
+        image_name = "bar_comparison_noisy"
+
     scenarios = list(results.keys())
     qbers = [np.mean(r[0]) for r in results.values()]
     skrs = [np.mean(r[1]) for r in results.values()]
@@ -52,7 +61,7 @@ def plot_bar_comparison(results, theory):
 
     ax1.bar(x - width/2, qbers, width, label='Simulated', color='steelblue')
     ax1.bar(x + width/2, t_qbers, width, label='Theory', color='orange', alpha=0.7)
-    ax1.set_title('QBER Comparison')
+    ax1.set_title(QBER_title)
     ax1.set_ylabel('QBER (%)')
     ax1.set_xticks(x)
     ax1.set_xticklabels(scenarios, rotation=15, ha='right')
@@ -61,7 +70,7 @@ def plot_bar_comparison(results, theory):
 
     ax2.bar(x - width/2, skrs, width, label='Simulated', color='steelblue')
     ax2.bar(x + width/2, t_skrs, width, label='Theory', color='orange')
-    ax2.set_title('SKR Comparison')
+    ax2.set_title(SKR_title)
     ax2.set_ylabel('SKR (%)')
     ax2.set_xticks(x)
     ax2.set_xticklabels(scenarios, rotation=15, ha='right')
@@ -69,9 +78,9 @@ def plot_bar_comparison(results, theory):
     ax2.grid(axis='y', alpha=0.3)
 
     plt.tight_layout()
-    save_plot('bar_comparison.png')
+    save_plot(f"{image_name}.png")
 
-def plot_cumulative_mean(results, theory):
+def plot_cumulative_mean(results, theory, mode="noiseless"):
     """
     Separate plots for each protocol and each case (no Eve / with Eve)
 
@@ -81,11 +90,15 @@ def plot_cumulative_mean(results, theory):
         A dictionary containing the simulation results for each protocol and scenario.
     theory : dict
         A dictionary containing the theoretical values for each protocol and scenario.
+    mode : str
+        Either "noiseless" or "noisy". Affects file names and plot titles.
 
     Returns
     -------
     None
     """
+
+    mode_label = "Noiseless" if mode == "noiseless" else "Noisy"
 
     # Group scenarios by protocol
     groups = {
@@ -104,16 +117,16 @@ def plot_cumulative_mean(results, theory):
             cumulative_qber      = pd.Series(error_rates).expanding().mean()
             cumulative_retention = pd.Series(sifted_key_rates).expanding().mean()
 
-            t_qber     = theory[scenario]['QBER']
+            t_qber      = theory[scenario]['QBER']
             t_retention = theory[scenario]['Sifted Key Rate']
 
             fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
-            fig.suptitle(f'{scenario} — Cumulative Mean Convergence')
+            fig.suptitle(f'{scenario} — Cumulative Mean Convergence ({mode_label})')
 
             # QBER convergence
             ax1.plot(cumulative_qber, color='steelblue', label='Simulated')
             ax1.axhline(y=t_qber, color='orange', linestyle='--', label=f'Theory ({t_qber}%)')
-            ax1.set_title('QBER')
+            ax1.set_title(f'QBER ({mode_label})')
             ax1.set_xlabel('Iteration')
             ax1.set_ylabel('QBER (%)')
             ax1.legend()
@@ -122,7 +135,7 @@ def plot_cumulative_mean(results, theory):
             # Sifted Key Rate convergence
             ax2.plot(cumulative_retention, color='steelblue', label='Simulated')
             ax2.axhline(y=t_retention, color='orange', linestyle='--', label=f'Theory ({t_retention}%)')
-            ax2.set_title('Sifted Key Retention Rate')
+            ax2.set_title(f'Sifted Key Retention Rate ({mode_label})')
             ax2.set_xlabel('Iteration')
             ax2.set_ylabel('Retention Rate (%)')
             ax2.legend()
@@ -130,8 +143,7 @@ def plot_cumulative_mean(results, theory):
 
             plt.tight_layout()
 
-            # Save with scenario name as filename
-            filename = f"cumulative_mean_{scenario.lower().replace(' ', '_')}.png"
+            filename = f"cumulative_mean_{scenario.lower().replace(' ', '_')}_{mode}.png"
             save_plot(filename)
 
 def plot_noisy_vs_noiseless(results_clean, results_noisy):
@@ -211,7 +223,9 @@ def plot_noise_sweep(run_bb84, run_b92, bit_size, iterations):
 
     for p in p_errors:
 
-        noise = {'p_prep': p, 'p_meas': p, 'p_eve_prep': 0, 'p_eve_meas': 0}
+        noise = {'p_alice_prep': p, 'p_bob_meas': p, 'p_eve_prep': 0, 'p_eve_meas': 0}
+
+        print(f"error: {p}")
 
         bb84_no_eve.append(np.mean(run_bb84(bit_size, iterations, eve=False, noise=noise)[0]))
         bb84_eve.append(np.mean(run_bb84(bit_size, iterations, eve=True, noise=noise)[0]))
@@ -227,8 +241,9 @@ def plot_noise_sweep(run_bb84, run_b92, bit_size, iterations):
 
         ax.plot(p_errors * 100, no_eve, label='No Eve', color='steelblue')
         ax.plot(p_errors * 100, eve, label='With Eve', color='orange')
-        ax.axhline(y=11, colour='green', linestyle='--', label='Detection Threshold (11%)')
-        ax.fill_between(p_errors * 100, no_eve, 11, where=[q < 11 for q in no_eve], alpha=0.2, color='red', label='Eve undetectable')
+        ax.axhline(y=11, color='green', linestyle='--', label='Detection Threshold (11%)')
+        ax.fill_between(p_errors * 100, no_eve, 11, where=[q < 11 for q in no_eve], alpha=0.2, color='red', label='Eve indistinguishable from noise')
+        ax.plot(p_errors * 100, np.array(eve) - np.array(no_eve), label='Delta QBER', color='red')
         ax.set_title(f'{title}: QBER vs Noise Level')
         ax.set_xlabel('Noise Level (%)')
         ax.set_ylabel('QBER (%)')

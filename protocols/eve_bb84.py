@@ -1,6 +1,7 @@
 from numpy import random
+import utils.utils as utils
 
-def intercept(alice_bits, alice_bases, eve_bases):
+def intercept(alice_bits, alice_bases, eve_bases, p_alice_prep=0.0, p_eve_prep=0.0, p_eve_meas=0.0):
     """
     Simulates Eve intercepting Alice's bits
     Measures in her own random bases
@@ -27,14 +28,19 @@ def intercept(alice_bits, alice_bases, eve_bases):
 
     for i in range(len(alice_bits)):
 
+        prepared_bit = utils.apply_noise(int(alice_bits[i]), p_alice_prep)
+
         # If Alice/Eve send/measure in same basis, Eve will measure Alice's bit
         # Bits measured on a matching basis added to the sifted key
         if alice_bases[i] == eve_bases[i]:
-            eve_resend.append(int(alice_bits[i]))
+            measured_bit = utils.apply_noise(prepared_bit, p_eve_meas)
 
         # If bases don't match, measurement outcome is random
         # Eve doesn't know, she will still send this bit
         else:
-            eve_resend.append(random.randint(2))
+            measured_bit = random.randint(2)
+
+        resend_bit = utils.apply_noise(measured_bit, p_eve_prep)
+        eve_resend.append(resend_bit)
 
     return eve_resend

@@ -6,7 +6,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import utils.utils as utils
 
-def no_eve(alice_bases, bob_bases):
+def no_eve(alice_bases, bob_bases, p_alice_prep=0.0, p_bob_meas=0.0):
     """
     Simulates the B92 protocol without an eavesdropper
 
@@ -48,23 +48,32 @@ def no_eve(alice_bases, bob_bases):
 
     for i in range(len(alice_bases)):
 
+        prepared_state = utils.apply_noise(alice_bases[i], p_alice_prep)
+
+        if alice_bases[i] == 'z':
+            alice_bit = 0
+        else:
+            alice_bit = 1
+
     # Alice sends |0> (bit 0), Bob measures in X -> keep if outcome is |->
-        if alice_bases[i] == 'z' and bob_bases[i] == 'x':
+        if prepared_state == 'z' and bob_bases[i] == 'x':
             measurement = random.randint(2)
+            measurement = utils.apply_noise(measurement, p_bob_meas)
             if measurement == 1:
                 bob_sifted.append(0)
-                alice_sifted.append(0)
+                alice_sifted.append(alice_bit)
 
     # Alice sends |+> (bit 1), Bob measures in Z -> keep if outcome is |1>
-        if alice_bases[i] == 'x' and bob_bases[i] == 'z':
+        if prepared_state == 'x' and bob_bases[i] == 'z':
             measurement = random.randint(2)
+            measurement = utils.apply_noise(measurement, p_bob_meas)
             if measurement == 1:
                 bob_sifted.append(1)
-                alice_sifted.append(1)
+                alice_sifted.append(alice_bit)
 
     return alice_sifted, bob_sifted
 
-def eve(alice_bases, bob_bases, eve_resend):
+def eve(alice_bases, bob_bases, eve_resend, p_bob_meas=0.0):
     """
     Simulates the B92 protocol with an eavesdropper
 
@@ -109,8 +118,9 @@ def eve(alice_bases, bob_bases, eve_resend):
                     kept_bits.append(i)
             elif eve_resend[i] == '-':
                 # Eve sends |-> (matching Bob) -> measures |-> -> concludes |0>
-                bob_sifted.append(0)
-                kept_bits.append(i)
+                if utils.apply_noise(1, p_bob_meas) == 1:
+                    bob_sifted.append(0)
+                    kept_bits.append(i)
             elif eve_resend[i] == 1:
                 # Eve sends |1> (orthogonal to Bob) -> random |+> or |->
                 measurement = random.randint(2)
@@ -131,8 +141,9 @@ def eve(alice_bases, bob_bases, eve_resend):
                     kept_bits.append(i)
             elif eve_resend[i] == 1:
                 # Eve sends |1> (matching Bob) -> measures |1> -> concludes |+>
-                bob_sifted.append(1)
-                kept_bits.append(i)
+                if utils.apply_noise(1, p_bob_meas):
+                    bob_sifted.append(1)
+                    kept_bits.append(i)
             elif eve_resend[i] == '-':
                 # Eve sends |-> (orthogonal to Bob) -> random |0> or |1>
                 measurement = random.randint(2)

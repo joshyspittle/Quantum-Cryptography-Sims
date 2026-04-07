@@ -6,7 +6,7 @@ import protocols.bb84 as bb84
 import protocols.eve_bb84 as eve_bb84
 import utils.utils as utils
 
-def _run_simulation(bit_size, iterations, eve, no_eve_fn, eve_fn, intercept_fn=None):
+def _run_simulation(bit_size, iterations, eve, no_eve_fn, eve_fn, intercept_fn=None, noise=None):
     """
     Runs the specified quantum key distribution simulation for a given number of iterations and bit size
 
@@ -35,6 +35,9 @@ def _run_simulation(bit_size, iterations, eve, no_eve_fn, eve_fn, intercept_fn=N
         The list of matching bits for each iteration
     """
 
+    if noise is None:
+        noise = {'p_alice_prep':0.0, 'p_bob_meas':0.0, 'p_eve_meas':0.0, 'p_eve_prep':0.0}      
+
     error_rates = []
     sifted_key_rates = []
     matching_bits_list = []
@@ -43,12 +46,15 @@ def _run_simulation(bit_size, iterations, eve, no_eve_fn, eve_fn, intercept_fn=N
 
         if eve:
             alice_bits, alice_bases, bob_bases, eve_bases = utils.prepare_bits_and_bases(bit_size, eve)
-            eve_resend = intercept_fn(alice_bits, alice_bases, eve_bases)
-            alice_sifted, bob_sifted = eve_fn(alice_bits, alice_bases, eve_resend, eve_bases, bob_bases)
+            eve_resend = intercept_fn(alice_bits, alice_bases, eve_bases, 
+                                      noise['p_alice_prep'], noise['p_eve_prep'], noise['p_eve_meas'])
+            alice_sifted, bob_sifted = eve_fn(alice_bits, alice_bases, eve_resend, eve_bases, bob_bases,
+                                              noise['p_bob_meas'])
 
         else:
             alice_bits, alice_bases, bob_bases = utils.prepare_bits_and_bases(bit_size)
-            alice_sifted, bob_sifted = no_eve_fn(alice_bits, alice_bases, bob_bases)
+            alice_sifted, bob_sifted = no_eve_fn(alice_bits, alice_bases, bob_bases,
+                                                 noise['p_alice_prep'], noise['p_bob_meas'])
 
         error_rates.append(utils.calculate_error_rate(alice_sifted, bob_sifted))
         sifted_key_rates.append(utils.calculate_sifted_key_rate(bob_sifted, bit_size))
@@ -56,7 +62,7 @@ def _run_simulation(bit_size, iterations, eve, no_eve_fn, eve_fn, intercept_fn=N
 
     return error_rates, sifted_key_rates, matching_bits_list
 
-def run_b92(bit_size, iterations, eve=False):
+def run_b92(bit_size, iterations, eve=False, noise=None):
     """
     Runs the B92 quantum key distribution simulation for a given number of iterations and bit size
 
@@ -83,12 +89,16 @@ def run_b92(bit_size, iterations, eve=False):
         bit_size,
         iterations,
         eve,
-        no_eve_fn=lambda alice_bits, alice_bases, bob_bases: b92.no_eve(alice_bases, bob_bases),
-        eve_fn=lambda alice_bits, alice_bases, eve_resend, eve_bases, bob_bases: b92.eve(alice_bases, bob_bases, eve_resend),
-        intercept_fn=lambda alice_bits, alice_bases, eve_bases: eve_b92.intercept(alice_bases, eve_bases)
+        no_eve_fn=lambda alice_bits, alice_bases, bob_bases, p_alice_prep, p_bob_meas: 
+            b92.no_eve(alice_bases, bob_bases, p_alice_prep, p_bob_meas),
+        eve_fn=lambda alice_bits, alice_bases, eve_resend, eve_bases, bob_bases, p_bob_meas: 
+            b92.eve(alice_bases, bob_bases, eve_resend, p_bob_meas),
+        intercept_fn=lambda alice_bits, alice_bases, eve_bases, p_alice_prep, p_eve_prep, p_eve_meas:
+            eve_b92.intercept(alice_bases, eve_bases, p_alice_prep, p_eve_prep, p_eve_meas),
+        noise=noise
     )
 
-def run_bb84(bit_size, iterations, eve=False):
+def run_bb84(bit_size, iterations, eve=False, noise=None):
     """
     Runs the BB84 quantum key distribution simulation for a given number of iterations and bit size
 
@@ -116,9 +126,13 @@ def run_bb84(bit_size, iterations, eve=False):
         bit_size,
         iterations,
         eve,
-        no_eve_fn=bb84.no_eve,
-        eve_fn=bb84.eve,
-        intercept_fn=eve_bb84.intercept
+        no_eve_fn=lambda alice_bits, alice_bases, bob_bases, p_alice_prep, p_bob_meas: 
+            bb84.no_eve(alice_bits, alice_bases, bob_bases, p_alice_prep, p_bob_meas),
+        eve_fn=lambda alice_bits, alice_bases, eve_resend, eve_bases, bob_bases, p_bob_meas: 
+            bb84.eve(alice_bits, alice_bases, eve_resend, eve_bases, bob_bases, p_bob_meas),
+        intercept_fn=lambda alice_bits, alice_bases, eve_bases, p_alice_prep, p_eve_prep, p_eve_meas:
+            eve_bb84.intercept(alice_bits, alice_bases, eve_bases, p_alice_prep, p_eve_prep, p_eve_meas),
+        noise=noise
     )
 
 

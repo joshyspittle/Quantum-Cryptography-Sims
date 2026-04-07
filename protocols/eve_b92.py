@@ -1,6 +1,7 @@
 from numpy import random
+import utils.utils as utils
 
-def intercept(alice_bases, eve_bases):
+def intercept(alice_bases, eve_bases, p_alice_prep=0.0, p_eve_prep=0.0, p_eve_meas=0.0):
     """
     Simulates Eve intercepting Alice's qubits
     Measures them in her own random bases
@@ -30,30 +31,35 @@ def intercept(alice_bases, eve_bases):
 
     for i in range(len(alice_bases)):
 
+        prepared_state = utils.apply_noise(alice_bases[i], p_alice_prep)
+
         # Alice sends |0> (bit 0)
-        if alice_bases[i] == 0:
+        if prepared_state == 0:
             if eve_bases[i] == 0:
                 # Eve measures in Z basis (matching Alice) -> measures |0>
-                eve_resend.append(0)
+                measured_state = utils.apply_noise(0, p_eve_meas)
             else:
                 # Eve measures in X basis (orthogonal to Alice) -> random |+> or |->
                 measurement = random.randint(2)
                 if measurement == 0:
-                    eve_resend.append('+')
+                    measured_state = '+'
                 else:
-                    eve_resend.append('-')
+                    measured_state = '-'
 
         # Alice sends |+> (bit 1)
-        elif alice_bases[i] == 1:
+        elif prepared_state == 1:
             if eve_bases[i] == 1:
                 # Eve measures in X basis (matching Alice) -> measures |+>
-                eve_resend.append('+')
+                measured_state = utils.apply_noise('+', p_eve_meas)
             else:
                 # Eve measures in Z basis (orthogonal to Alice) -> random |0> or |1>
                 measurement = random.randint(2)
                 if measurement == 0:
-                    eve_resend.append(0)
+                    measured_state = 0
                 else:
-                    eve_resend.append(1)
+                    measured_state = 1
+
+        resend_state = utils.apply_noise(measured_state, p_eve_prep)
+        eve_resend.append(resend_state)
 
     return eve_resend
